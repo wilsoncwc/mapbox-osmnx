@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "semi": ["error", "never"],
+    "quotes": ["error", "single"]
+  },
+  "extends": [
+    "next/core-web-vitals", 
+    "prettier"
+  ]
+}
