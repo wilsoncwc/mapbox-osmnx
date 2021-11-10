@@ -1,4 +1,4 @@
-import Mapbox from '../components/Mapbox'
+import Mapbox from '../src/components/Mapbox'
 
 function App() {
     return <Mapbox />
