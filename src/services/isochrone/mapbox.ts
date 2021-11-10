@@ -4,26 +4,25 @@ import { FeatureCollection } from 'geojson'
 
 export interface IsoParams {
     center: LngLat;
-    profile: string;
-    minutes: number | number[];
+    profile?: string;
+    minutes?: number | number[];
 }
 
 const DEFAULT_PARAMS: IsoParams = {
-    center: MAP_DEFAULT.location,
-    profile: DEFAULT_MODE,
-    minutes: DEFAULT_TIME
+    center: MAP_DEFAULT.location
 }
 
 export const getIso = async (params = DEFAULT_PARAMS): Promise<Isochrone> => {
     const urlBase = 'https://api.mapbox.com/isochrone/v1/mapbox/'
-    const profile = params.profile
+    const profile = params.profile || DEFAULT_MODE
     const lon = params.center.lng
     const lat = params.center.lat
-    const minutes = Array.isArray(params.minutes)
-        ? params.minutes.join(',') : params.minutes.toString()
+    const minutes = params.minutes || DEFAULT_TIME
+    const minutesStr = Array.isArray(minutes)
+        ? minutes.join(',') : minutes.toString()
 
     const response = await fetch(
-        `${urlBase}${profile}/${lon},${lat}?contours_minutes=${minutes}&polygons=true&access_token=${MAPBOX_TOKEN}`,
+        `${urlBase}${profile}/${lon},${lat}?contours_minutes=${minutesStr}&polygons=true&access_token=${MAPBOX_TOKEN}`,
         { method: 'GET' }
     )
 

@@ -8,7 +8,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@chakra-ui/react": "^1.6.12",
+    "@emotion/react": "^11.5.0",
+    "@emotion/styled": "^11.3.0",
+    "@turf/turf": "^6.5.0",
     "@types/geojson": "^7946.0.8",
+    "framer-motion": "^4.1.17",
     "mapbox-gl": "^2.6.0",
     "next": "12.0.3",
     "react": "17.0.2",
