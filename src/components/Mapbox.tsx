@@ -3,15 +3,19 @@ import { Box } from '@chakra-ui/react'
 import mapboxgl, { GeoJSONSource, LngLatBoundsLike } from 'mapbox-gl' // eslint-disable-line import/no-webpack-loader-syntax
 import { bbox } from '@turf/turf'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { MAPBOX_TOKEN, MAP_DEFAULT } from '../constants'
-import { FeatureCollection } from 'geojson'
+import { DEFAULT_MODE, MAPBOX_TOKEN, MAP_DEFAULT } from '../constants'
 import { getIso } from '../services/isochrone/mapbox'
+import Sidebar from './Sidebar'
+import { TravelMode } from '../types'
 
 const Mapbox = () => {
   const mapContainer = useRef(null)
-  const [lng, setLng] = useState(MAP_DEFAULT.location.lng)
-  const [lat, setLat] = useState(MAP_DEFAULT.location.lat)
-  const [zoom, setZoom] = useState(MAP_DEFAULT.zoom)
+  const [map, setMap] = useState<mapboxgl.Map>()
+  const [loc, setLoc] = useState({
+    lng: MAP_DEFAULT.location.lng,
+    lat: MAP_DEFAULT.location.lat
+  })
+  const [mode, setMode] = useState<TravelMode>(DEFAULT_MODE)
 
   useEffect(() => {
     const container = mapContainer.current
@@ -20,21 +24,21 @@ const Mapbox = () => {
     const mapbox = new mapboxgl.Map({
       accessToken: MAPBOX_TOKEN,
       style: 'mapbox://styles/mapbox/streets-v11',
-      center: [lng, lat],
+      center: {
+        lng: MAP_DEFAULT.location.lng,
+        lat: MAP_DEFAULT.location.lat
+      },
       container,
-      zoom
+      zoom: MAP_DEFAULT.zoom
     })
 
     const marker = new mapboxgl.Marker({
       draggable: true
     }).setLngLat(MAP_DEFAULT.location).addTo(mapbox)
     marker.on('dragend', () => {
+      console.log('On drag end')
       const lngLat = marker.getLngLat()
-      getIso({ center: lngLat }).then(iso => {
-        if (iso.geojson) {
-          setLayer(mapbox, 'iso', iso.geojson)
-        }
-      })
+      setLoc(lngLat)
     })
         
     const geolocate = new mapboxgl.GeolocateControl({
@@ -44,29 +48,30 @@ const Mapbox = () => {
       showUserLocation: false
     })
     geolocate.on('geolocate', pos => {
-      const position = pos as GeolocationPosition
-      const lng = position.coords.longitude
-      const lat = position.coords.latitude
-      marker.setLngLat([lng, lat])
+      const lngLat = {
+        lng: (pos as GeolocationPosition).coords.longitude,
+        lat: (pos as GeolocationPosition).coords.latitude
+      }
+      console.log('On geolocate')
+      marker.setLngLat(lngLat)
+      setLoc(lngLat)
     })
     mapbox.addControl(geolocate)
-
     mapbox.addControl(new mapboxgl.NavigationControl())
 
-    mapbox.on('load', () => getIso().then(iso => { 
-      if (iso.geojson) addLayer(mapbox, 'iso', iso.geojson)
-    }))
-
+    mapbox.on('load', () => {
+      addLayer(mapbox, 'iso')
+      setMap(mapbox)
+    })
     return () => {
       console.log('Removing map...')
       mapbox.remove()
     }
-  }, [lng, lat, zoom])
+  }, [])
 
   const addLayer = (
     map: mapboxgl.Map,
-    id: string,
-    data: FeatureCollection
+    id: string
   ) => {
     map.addSource(id, {
       type: 'geojson',
@@ -92,32 +97,32 @@ const Mapbox = () => {
         layout: {}
       }
     )
-    setLayer(map, id, data)
-  }
-    
-  const removeLayer = (map: mapboxgl.Map, id: string) => 
-    map.removeLayer(`${id}Layer`).removeSource(id)
-
-  const setLayer = (
-    map: mapboxgl.Map,
-    id: string,
-    data: FeatureCollection
-  ) => {
-    const src = map.getSource(id) as GeoJSONSource
-    src.setData(data)
-    fitLayer(map, data)
   }
 
-  const fitLayer = (
-    map: mapboxgl.Map,
-    data: FeatureCollection
-  ) => {
-    map.fitBounds(bbox(data) as LngLatBoundsLike, {
-      padding: 20
+  const recomputeIso = () => {
+    getIso({
+      center: loc,
+      profile: mode
+    }).then(iso => {
+      if (map && iso.geojson) {
+        const src = map.getSource('iso') as GeoJSONSource
+        src.setData(iso.geojson)
+        map.fitBounds(bbox(iso.geojson) as LngLatBoundsLike, {
+          padding: 20
+        })
+      }
     })
   }
+  useEffect(recomputeIso, [map, loc, mode])
 
-  return <Box w='100%' h='100%' ref={mapContainer} />
+  return (
+    <Box w='100%' h='100%'>
+      <Box pos='absolute' p={4} float='left' zIndex={99}>
+        <Sidebar onModeChange={setMode}/>
+      </Box>
+      <Box w='100%' h='100%' ref={mapContainer} />
+    </Box>
+  )
 }
 
 export default Mapbox
