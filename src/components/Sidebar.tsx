@@ -1,22 +1,25 @@
 import React, { FC } from 'react'
 import {
-  Box, FormControl, FormLabel, Radio, RadioGroup, Stack, useColorModeValue
+  Button, FormControl, FormLabel, Radio, RadioGroup, Stack, useColorModeValue, VStack
 } from '@chakra-ui/react'
 import { TravelMode } from '../types'
 import { DEFAULT_MODE } from '../constants'
 
 interface SidebarProps {
-    onModeChange?: (mode: TravelMode) => void
+    onModeChange?: (mode: TravelMode) => void;
+    toggleRoad?: () => void;
+    toggleIso?: () => void;
 }
 
-const Sidebar: FC<SidebarProps> = ({ onModeChange }) => {
+const Sidebar: FC<SidebarProps> = ({ onModeChange, toggleRoad, toggleIso }) => {
   const travelOptions = Object.entries(TravelMode)
   const bg = useColorModeValue('gray.50', 'gray.900')
   return (
-    <Box
+    <VStack
       bg={bg}
       p={4}
       borderRadius={4}
+      spacing={4}
     >
       <FormControl id="country">
         <FormLabel>
@@ -32,7 +35,13 @@ const Sidebar: FC<SidebarProps> = ({ onModeChange }) => {
           </Stack>
         </RadioGroup>
       </FormControl>
-    </Box>
+      <Button onClick={toggleRoad} variant='outline' p='4'>
+        Toggle Roads
+      </Button>
+      <Button onClick={toggleIso} variant='outline' p='4'>
+        Toggle Travel Time
+      </Button>
+    </VStack>
   )
 }
 

@@ -13,6 +13,8 @@
     "@chakra-ui/react": "^1.6.12",
     "@emotion/react": "^11.5.0",
     "@emotion/styled": "^11.3.0",
+    "@mapbox/tilebelt": "^1.0.2",
+    "@mapbox/vt2geojson": "^1.1.5",
     "@turf/turf": "^6.5.0",
     "@types/geojson": "^7946.0.8",
     "framer-motion": "^4.1.17",
