@@ -1,4 +1,4 @@
-import { Isochrone, LngLat } from '../../types/geom'
+import { Isochrone, LngLat } from '../../types'
 import { DEFAULT_MODE, DEFAULT_TIME, MAPBOX_TOKEN, MAP_DEFAULT } from '../../constants'
 import { FeatureCollection } from 'geojson'
 

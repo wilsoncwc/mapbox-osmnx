@@ -1,14 +1,15 @@
-import React, { useRef, useEffect, useState } from 'react'
-import mapboxgl, { GeoJSONSource, LngLatBounds, LngLatBoundsLike } from 'mapbox-gl' // eslint-disable-line import/no-webpack-loader-syntax
+import React, { useRef, useEffect, useState, useCallback } from 'react'
+import mapboxgl, { GeoJSONSource, LngLatBoundsLike } from 'mapbox-gl' // eslint-disable-line import/no-webpack-loader-syntax
 import { bbox } from '@turf/turf'
 import { Box } from '@chakra-ui/react'
 import { FeatureCollection } from 'geojson'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 import Sidebar from './Sidebar'
-import { TravelMode } from '../types'
-import { getIso } from '../services/isochrone/mapbox'
+import { LngLat, TravelMode } from '../types'
+import { getIso } from '../services/mapbox'
 import { DEFAULT_MODE, MAPBOX_TOKEN, MAP_DEFAULT, EMPTY_GEOJSON, ROAD_FILTER } from '../constants'
+import { getRoute } from '../services/mapbox/routing'
 
 const Mapbox = () => {
   const mapContainer = useRef(null)
@@ -42,6 +43,7 @@ const Mapbox = () => {
       const lngLat = marker.getLngLat()
       setLoc(lngLat)
     })
+    const end = new mapboxgl.Marker({ color: '#DD6B20' })
         
     const geolocate = new mapboxgl.GeolocateControl({
       positionOptions: {
@@ -90,13 +92,39 @@ const Mapbox = () => {
           visibility: 'none'
         }
       })
+      addLayer(mapbox, 'route', 'line', {
+        paint: {
+          'line-color': '#805AD5',
+          'line-width': 5,
+          'line-opacity': 0.75
+        },
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        }
+      })
+      mapbox.addLayer({
+        id: 'route-label',
+        type: 'symbol',
+        source: 'route',
+        layout: {
+          'symbol-placement': 'line',
+          'text-field': '{label}'
+        }
+      })
       setMap(mapbox)
+    })
+
+    mapbox.on('click', (event) => {
+      end.setLngLat(event.lngLat).addTo(mapbox)
+      getRouteOnClick(mapbox, event.lngLat)
     })
 
     return () => {
       console.log('Removing map...')
       mapbox.remove()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const addLayer = (
@@ -136,28 +164,45 @@ const Mapbox = () => {
         const isochroneIntersectColor = sortedIsoPolys.flatMap(isochrone => 
           [['within', isochrone], isochrone.properties?.color])
         const roadColorCaseRule = ['case', ...isochroneIntersectColor, '#2D3748']
-        console.log(roadColorCaseRule)
         map.setPaintProperty('roadLayer', 'line-color', roadColorCaseRule)
-        
       }
     })
   }
 
-  const getRoadVect = () => {
-    if (map) {
-      const roadData = map.querySourceFeatures('composite', { 
+  const getRoadVect = (mapbox = map) => {
+    if (mapbox) {
+      const roadData = mapbox.querySourceFeatures('composite', { 
         sourceLayer: 'road',
-        filter: ['!', ['in', ['get', 'class'], ['literal', ROAD_FILTER]]]
+        filter: ['all',
+          ['!', ['in', ['get', 'class'], ['literal', ROAD_FILTER]]],
+        ]
       })
-      const src = map.getSource('road') as GeoJSONSource
+      const src = mapbox.getSource('road') as GeoJSONSource
       const roads: FeatureCollection = {
         type: 'FeatureCollection',
-        features: roadData.map(feature => ({
-          type: 'Feature',
-          geometry: feature.geometry,
-          properties: feature.properties
-        }))
+        features: roadData.flatMap(feature => {
+          switch (feature.geometry.type) {
+          case 'MultiLineString':
+            return feature.geometry.coordinates.map(coords => ({
+              type: 'Feature',
+              geometry: {
+                type: 'LineString',
+                coordinates: coords
+              },
+              properties: feature.properties
+            }))
+          case 'LineString':
+            return [{
+              type: 'Feature',
+              geometry: feature.geometry,
+              properties: feature.properties
+            }]
+          default:
+            return []
+          }
+        })
       }
+      console.log(roads)
       src.setData(roads)
       // getVector({
       //   tileset: 'mapbox.mapbox-streets-v8',
@@ -170,6 +215,14 @@ const Mapbox = () => {
       //   src.setData(data)
       // })
     }
+  }
+
+  const getRouteOnClick = (map: mapboxgl.Map, coords: LngLat) => {
+    if (!map) return
+    getRoute({ mode, src: loc, dst: coords}).then(route => {
+      const src = map.getSource('route') as GeoJSONSource
+      src.setData(route)
+    })
   }
 
   useEffect(getAndSetIso, [map, loc, mode])

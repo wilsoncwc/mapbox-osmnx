@@ -7,7 +7,6 @@ export const matchRoadsToIso = (
   iso: FeatureCollection
 ): FeatureCollection => {
   const isochrones = iso.features.sort((a, b) => area(a) - area(b))
-  console.log(isochrones)
   const processedRoads = []
   for (let road of roads.features) {
     let converted = false
