@@ -1,5 +1,5 @@
 from flask_restx import Api
-from geoprocessing import ns as geoprocessing_api
+from project.modules.geoprocessing import ns as geoprocessing_api
 
 api = Api(title="Geoprocessing API",
           version="1.0")

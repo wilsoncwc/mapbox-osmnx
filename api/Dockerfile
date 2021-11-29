@@ -15,12 +15,12 @@ ENV C_INCLUDE_PATH=/usr/include/gdal
 
 # Defining working directory and adding source code
 WORKDIR /usr/src/app
-COPY Pipfile Pipfile.lock start.sh ./
+COPY Pipfile Pipfile.lock index.py ./
 COPY project ./project
 
 # Install API dependencies
-RUN pipenv install
+RUN pipenv install --system --clear
 
 # Start app
 EXPOSE 5000
-ENTRYPOINT ["/usr/src/app/start.sh"]
+ENTRYPOINT FLASK_APP=./index.py flask run --host=0.0.0.0

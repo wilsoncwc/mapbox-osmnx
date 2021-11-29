@@ -6,7 +6,7 @@ ns = Namespace("Geoprocessing",
 
 @ns.route('/hello')
 class Isochrone(Resource):
-    def get():
+    def get(self):
         return {'hello': 'world'}
         # G = ox.create_graph(loc= "Stockholm, Sweden", 
         #          dist= 5000, 
