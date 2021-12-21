@@ -1,12 +1,11 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import mapboxgl, { GeoJSONSource, LngLatBoundsLike } from 'mapbox-gl' // eslint-disable-line import/no-webpack-loader-syntax
 import { bbox } from '@turf/turf'
 import { Box } from '@chakra-ui/react'
-import { FeatureCollection } from 'geojson'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 import Sidebar from './Sidebar'
-import { LngLat, TravelMode } from '../types'
+import { LngLat, TravelMode, toOxType } from '../types'
 import { getIso } from '../services/mapbox'
 import { DEFAULT_MODE, MAPBOX_TOKEN, MAP_DEFAULT, EMPTY_GEOJSON, ROAD_FILTER } from '../constants'
 import { getRoute } from '../services/mapbox/routing'
@@ -172,51 +171,17 @@ const Mapbox = () => {
     })
   }
 
-  const getRoadVect = (mapbox = map) => {
+  const getRoadIso = (mapbox = map) => {
     if (mapbox) {
-      const roadData = mapbox.querySourceFeatures('composite', { 
-        sourceLayer: 'road',
-        filter: ['all',
-          ['!', ['in', ['get', 'class'], ['literal', ROAD_FILTER]]],
-        ]
-      })
-      const src = mapbox.getSource('road') as GeoJSONSource
-      const roads: FeatureCollection = {
-        type: 'FeatureCollection',
-        features: roadData.flatMap(feature => {
-          switch (feature.geometry.type) {
-          case 'MultiLineString':
-            return feature.geometry.coordinates.map(coords => ({
-              type: 'Feature',
-              geometry: {
-                type: 'LineString',
-                coordinates: coords
-              },
-              properties: feature.properties
-            }))
-          case 'LineString':
-            return [{
-              type: 'Feature',
-              geometry: feature.geometry,
-              properties: feature.properties
-            }]
-          default:
-            return []
-          }
+      const urlBase = '/api/v1/geoprocessing/isochrone/'
+      fetch(`${urlBase}${toOxType(mode)}/${loc.lng},${loc.lat}`).then(res =>
+        res.json().then(data => {
+          const src = mapbox.getSource('road') as GeoJSONSource
+          console.log(data)
+          console.log(typeof(data))
+          src.setData(data)
         })
-      }
-      console.log(roads)
-      src.setData(roads)
-      // getVector({
-      //   tileset: 'mapbox.mapbox-streets-v8',
-      //   bounds,
-      //   layer: 'road'
-      // }).then(data => {
-      //   console.log(data)
-      //   const src = map.getSource('road') as GeoJSONSource
-      //   // const classifiedData = iso ? matchRoadsToIso(data as FeatureCollection, iso) : data
-      //   src.setData(data)
-      // })
+      )
     }
   }
 
@@ -246,7 +211,7 @@ const Mapbox = () => {
       <Box pos='absolute' p={4} float='left' zIndex={99}>
         <Sidebar
           onModeChange={setMode}
-          toggleRoad={() => toggleLayer('roadLayer', getRoadVect)}
+          toggleRoad={() => toggleLayer('roadLayer', getRoadIso)}
           toggleIso={() => toggleLayer('isoLayer')}
         />
       </Box>

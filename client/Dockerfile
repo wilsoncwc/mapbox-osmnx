@@ -1,4 +1,5 @@
-FROM node:13.13.0-alpine
+FROM node:lts-alpine
+RUN apk --no-cache add git
 
 WORKDIR /usr/src/app
 ENV PATH /usr/src/app/node_modules/.bin:$PATH
