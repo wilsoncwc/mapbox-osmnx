@@ -3,11 +3,13 @@
 // Definitions by: Wilson Chua <https://github.com/wilsoncwc/>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 
-
-export class Gradient {
+declare module 'javascript-color-gradient' {
+  export = Gradient;
+  class Gradient {
     constructor(gradients?: string, maxNum?: number, color?: string[], intervals?: any[]);
-    setGradient(...args: string): Gradient;
+    setGradient(...args: string[]): Gradient;
     getArray(): string[];
     getColor(index: number): string;
     setMidpoint(maxNumber: number): Gradient;
+  }
 }
