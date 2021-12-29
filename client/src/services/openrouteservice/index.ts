@@ -1,2 +1,2 @@
 export * from './isochrone'
-export * from './routing'
+export * from './matrix'

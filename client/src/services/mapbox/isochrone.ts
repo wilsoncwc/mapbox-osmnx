@@ -1,20 +1,15 @@
-import { Isochrone, LngLat } from '../../types'
+import { Isochrone, IsoParams } from '../../types'
 import { DEFAULT_MODE, DEFAULT_TIME, MAPBOX_TOKEN, MAP_DEFAULT } from '../../constants'
 import { FeatureCollection } from 'geojson'
 
-export interface IsoParams {
-  center: LngLat;
-  profile?: string;
-  minutes?: number | number[];
-}
-
 const DEFAULT_PARAMS: IsoParams = {
-  center: MAP_DEFAULT.location
+  center: MAP_DEFAULT.location,
+  profile: DEFAULT_MODE
 }
 
-export const getIso = async (params = DEFAULT_PARAMS): Promise<Isochrone> => {
+export const getMapboxIso = async (params = DEFAULT_PARAMS): Promise<Isochrone> => {
   const urlBase = 'https://api.mapbox.com/isochrone/v1/mapbox/'
-  const profile = params.profile || DEFAULT_MODE
+  const profile = params.profile
   const lon = params.center.lng
   const lat = params.center.lat
   const minutes = params.minutes || DEFAULT_TIME
@@ -31,9 +26,10 @@ export const getIso = async (params = DEFAULT_PARAMS): Promise<Isochrone> => {
     console.log(response)
   }
 
-  const data = await response.json()
+  const data: FeatureCollection = await response.json()
+  data.features.reverse()
   return {
     center: params.center,
-    geojson: data as FeatureCollection
+    geojson: data
   }
 }

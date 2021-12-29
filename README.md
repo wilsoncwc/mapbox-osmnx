@@ -1,17 +1,22 @@
 # Mapbox-OSMnx Travel Times
 An application for testing web map visualizations. It currently computes isochronal map layers with [OSMnx](https://osmnx.readthedocs.io/en/stable/) and visualizes it in [mapbox-gl-js](https://docs.mapbox.com/mapbox-gl-js/api/).
 
-It is built with a [Flask](https://flask.palletsprojects.com/en/2.0.x/) and [Next.js](https://nextjs.org/) frontend, connected using the typical nginx reverse-proxy.
+It is built with a [Flask](https://flask.palletsprojects.com/en/2.0.x/) backend and [Next.js](https://nextjs.org/) frontend, connected using the typical nginx reverse-proxy.
 
 ## Prerequistes
 You will need the following to run the complete application
  * [Docker Desktop](https://www.docker.com/products/docker-desktop) installed with `docker-compose`
  * [Mapbox API Key](https://docs.mapbox.com/help/getting-started/access-tokens/)
+ * [TravelTime API Key and App Id](https://docs.traveltime.com/api/overview/getting-keys)
+ * [OpenRouteService API Key](https://openrouteservice.org/dev/#/signup)
 
 ## Running locally
-In the `client` folder, enter the following into a new file called `.env.local`, replacing <access_token> with your api key.
+In the `client` folder, enter the following into a new file called `.env.local`, replacing <access_token> with your key
 ```
 NEXT_PUBLIC_MAPBOX_TOKEN=<access_token>
+NEXT_PUBLIC_OPENROUTESERVICE_TOKEN=<access_token>
+NEXT_PUBLIC_TRAVELTIME_APP_ID=<access_token>
+NEXT_PUBLIC_TRAVELTIME_API_KEY=<access_token>
 ```
 
 Then run the following in the project root folder.

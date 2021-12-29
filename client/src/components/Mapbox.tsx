@@ -1,15 +1,15 @@
 import React, { useRef, useEffect, useState } from 'react'
 import mapboxgl, { GeoJSONSource, LngLatBoundsLike } from 'mapbox-gl' // eslint-disable-line import/no-webpack-loader-syntax
-import { bbox } from '@turf/turf'
+import { bbox, distance } from '@turf/turf'
 import { Box } from '@chakra-ui/react'
+import Gradient from 'javascript-color-gradient'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 import Sidebar from './Sidebar'
 import { LngLat, TravelMode, toOxType } from '../types'
-import { getIso } from '../services/mapbox'
-import { DEFAULT_MODE, MAPBOX_TOKEN, MAP_DEFAULT, EMPTY_GEOJSON, ROAD_FILTER } from '../constants'
+import { getIso } from '../services/isoAdaptor'
+import { DEFAULT_MODE, DEFAULT_ISO_OPACITY, MAPBOX_TOKEN, MAP_DEFAULT, EMPTY_GEOJSON, ROAD_FILTER, DEFAULT_API } from '../constants'
 import { getRoute } from '../services/mapbox/routing'
-
 const Mapbox = () => {
   const mapContainer = useRef(null)
   const [map, setMap] = useState<mapboxgl.Map>()
@@ -17,6 +17,7 @@ const Mapbox = () => {
     lng: MAP_DEFAULT.location.lng,
     lat: MAP_DEFAULT.location.lat
   })
+  const [api, setAPI] = useState(DEFAULT_API)
   const [mode, setMode] = useState<TravelMode>(DEFAULT_MODE)
 
   useEffect(() => {
@@ -59,8 +60,8 @@ const Mapbox = () => {
       marker.setLngLat(lngLat)
       setLoc(lngLat)
     })
-    mapbox.addControl(geolocate)
-    mapbox.addControl(new mapboxgl.NavigationControl())
+    mapbox.addControl(geolocate, 'bottom-right')
+    mapbox.addControl(new mapboxgl.NavigationControl(), 'bottom-right')
 
     // Map Events
     mapbox.on('load', () => {
@@ -153,35 +154,49 @@ const Mapbox = () => {
     getIso({
       center: loc,
       profile: mode
-    }).then(iso => {
+    }, api).then(iso => {
       if (map && iso.geojson) {
+        // Assign colors
+        const colorGradient = new Gradient()
+        colorGradient.setGradient('#502ea8', '#e9446a')
+        colorGradient.setMidpoint(iso.geojson.features.length)
+        const colors = colorGradient.getArray()
+        iso.geojson.features.forEach((feature, index) => {
+          if (feature.properties) {
+            feature.properties['color'] = colors[index]
+            feature.properties['opacity'] = DEFAULT_ISO_OPACITY
+          } 
+        })
+
+        // Set data
         const src = map.getSource('iso') as GeoJSONSource
         src.setData(iso.geojson)
         map.fitBounds(bbox(iso.geojson) as LngLatBoundsLike, {
           padding: 20
         })
-
-        // Set road network color to that of the containing isochrone
-        const sortedIsoPolys = iso.geojson.features.slice().reverse()
-        const isochroneIntersectColor = sortedIsoPolys.flatMap(isochrone => 
-          [['within', isochrone], isochrone.properties?.color])
-        const roadColorCaseRule = ['case', ...isochroneIntersectColor, '#2D3748']
-        map.setPaintProperty('roadLayer', 'line-color', roadColorCaseRule)
       }
+    }).catch(err => {
+      // TODO: Error handling
+      console.log(err)
     })
   }
 
   const getRoadIso = (mapbox = map) => {
     if (mapbox) {
       const urlBase = '/api/v1/geoprocessing/isochrone/'
-      fetch(`${urlBase}${toOxType(mode)}/${loc.lng},${loc.lat}`).then(res =>
+      const bounds = mapbox.getBounds()
+      const dist = distance(bounds.getNorthWest().toArray(), bounds.getSouthEast().toArray()) * 1000 / 2 // Get a radius using the diagonal length as an approximate diameter, converted to metres from kilometres
+      fetch(`${urlBase}${toOxType(mode)}/${loc.lng},${loc.lat}?dist=${dist}`).then(res =>
         res.json().then(data => {
           const src = mapbox.getSource('road') as GeoJSONSource
           console.log(data)
           console.log(typeof(data))
           src.setData(data)
         })
-      )
+      ).catch(err => {
+        // TODO: Error handling
+        console.log(err)
+      })
     }
   }
 
@@ -194,7 +209,7 @@ const Mapbox = () => {
     })
   }
 
-  useEffect(getAndSetIso, [map, loc, mode])
+  useEffect(getAndSetIso, [map, loc, mode, api])
 
   const toggleLayer = (layer: string, callbackOnVisible?: () => void) => {
     if (map) {
@@ -211,6 +226,7 @@ const Mapbox = () => {
       <Box pos='absolute' p={4} float='left' zIndex={99}>
         <Sidebar
           onModeChange={setMode}
+          onAPIChange={setAPI}
           toggleRoad={() => toggleLayer('roadLayer', getRoadIso)}
           toggleIso={() => toggleLayer('isoLayer')}
         />

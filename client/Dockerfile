@@ -1,13 +1,14 @@
+#Creates a layer from node:alpine image.
 FROM node:lts-alpine
-RUN apk --no-cache add git
 
 WORKDIR /usr/src/app
-ENV PATH /usr/src/app/node_modules/.bin:$PATH
+ENV PORT 3000
 
-# install and cache app dependencies
-COPY package.json /usr/src/app/package.json
-
-RUN yarn
+#Copy new files or directories into the filesystem of the container
+COPY package.json yarn.lock /usr/src/app/
+RUN yarn install --frozen-lockfile
+COPY . /usr/src/app
+RUN yarn build
 
 EXPOSE 3000
-CMD ["yarn", "dev"]
+ENTRYPOINT ["yarn", "start"]
