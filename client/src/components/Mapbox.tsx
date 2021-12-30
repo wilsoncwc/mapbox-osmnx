@@ -1,15 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react'
-import mapboxgl, { GeoJSONSource, LngLatBoundsLike } from 'mapbox-gl' // eslint-disable-line import/no-webpack-loader-syntax
-import { bbox, distance } from '@turf/turf'
+import mapboxgl, { GeoJSONSource } from 'mapbox-gl' // eslint-disable-line import/no-webpack-loader-syntax
+import { distance } from '@turf/turf'
 import { Box } from '@chakra-ui/react'
-import Gradient from 'javascript-color-gradient'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
 import Sidebar from './Sidebar'
-import { LngLat, TravelMode, toOxType } from '../types'
-import { getIso } from '../services/isoAdaptor'
-import { DEFAULT_MODE, DEFAULT_ISO_OPACITY, MAPBOX_TOKEN, MAP_DEFAULT, EMPTY_GEOJSON, ROAD_FILTER, DEFAULT_API } from '../constants'
-import { getRoute } from '../services/mapbox/routing'
+import { TravelMode, toOxType } from '../types'
+import { DEFAULT_MODE, MAPBOX_TOKEN, MAP_DEFAULT, EMPTY_GEOJSON} from '../constants'
 const Mapbox = () => {
   const mapContainer = useRef(null)
   const [map, setMap] = useState<mapboxgl.Map>()
@@ -17,7 +14,6 @@ const Mapbox = () => {
     lng: MAP_DEFAULT.location.lng,
     lat: MAP_DEFAULT.location.lat
   })
-  const [api, setAPI] = useState(DEFAULT_API)
   const [mode, setMode] = useState<TravelMode>(DEFAULT_MODE)
 
   useEffect(() => {
@@ -39,11 +35,9 @@ const Mapbox = () => {
       draggable: true
     }).setLngLat(MAP_DEFAULT.location).addTo(mapbox)
     marker.on('dragend', () => {
-      console.log('On drag end')
       const lngLat = marker.getLngLat()
       setLoc(lngLat)
     })
-    const end = new mapboxgl.Marker({ color: '#DD6B20' })
         
     const geolocate = new mapboxgl.GeolocateControl({
       positionOptions: {
@@ -56,7 +50,6 @@ const Mapbox = () => {
         lng: (pos as GeolocationPosition).coords.longitude,
         lat: (pos as GeolocationPosition).coords.latitude
       }
-      console.log('On geolocate')
       marker.setLngLat(lngLat)
       setLoc(lngLat)
     })
@@ -65,22 +58,6 @@ const Mapbox = () => {
 
     // Map Events
     mapbox.on('load', () => {
-      // Isochrone Layer
-      addLayer(mapbox, 'iso', 'fill', {
-        paint: {
-          'fill-color': {
-            type: 'identity',
-            property: 'color'
-          },
-          'fill-opacity': {
-            type: 'identity',
-            property: 'opacity'
-          }
-        },
-        layout: {
-          visibility: 'visible'
-        }
-      })
       // Road vector data layer
       addLayer(mapbox, 'road', 'line', {
         paint: {
@@ -92,35 +69,12 @@ const Mapbox = () => {
           visibility: 'none'
         }
       })
-      addLayer(mapbox, 'route', 'line', {
-        paint: {
-          'line-color': '#805AD5',
-          'line-width': 5,
-          'line-opacity': 0.75
-        },
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
-        }
-      })
-      mapbox.addLayer({
-        id: 'route-label',
-        type: 'symbol',
-        source: 'route',
-        layout: {
-          'symbol-placement': 'line',
-          'text-field': '{label}',
-          'text-radial-offset': 0.5,
-          'text-justify': 'auto',
-          'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
-        }
-      })
       setMap(mapbox)
     })
 
     mapbox.on('click', (event) => {
-      end.setLngLat(event.lngLat).addTo(mapbox)
-      getRouteOnClick(mapbox, event.lngLat)
+      marker.setLngLat(event.lngLat)
+      setLoc(event.lngLat)
     })
 
     return () => {
@@ -150,37 +104,6 @@ const Mapbox = () => {
     )
   }
 
-  const getAndSetIso = () => {
-    getIso({
-      center: loc,
-      profile: mode
-    }, api).then(iso => {
-      if (map && iso.geojson) {
-        // Assign colors
-        const colorGradient = new Gradient()
-        colorGradient.setGradient('#502ea8', '#e9446a')
-        colorGradient.setMidpoint(iso.geojson.features.length)
-        const colors = colorGradient.getArray()
-        iso.geojson.features.forEach((feature, index) => {
-          if (feature.properties) {
-            feature.properties['color'] = colors[index]
-            feature.properties['opacity'] = DEFAULT_ISO_OPACITY
-          } 
-        })
-
-        // Set data
-        const src = map.getSource('iso') as GeoJSONSource
-        src.setData(iso.geojson)
-        map.fitBounds(bbox(iso.geojson) as LngLatBoundsLike, {
-          padding: 20
-        })
-      }
-    }).catch(err => {
-      // TODO: Error handling
-      console.log(err)
-    })
-  }
-
   const getRoadIso = (mapbox = map) => {
     if (mapbox) {
       const urlBase = '/api/v1/geoprocessing/isochrone/'
@@ -200,17 +123,6 @@ const Mapbox = () => {
     }
   }
 
-  const getRouteOnClick = (map: mapboxgl.Map, coords: LngLat) => {
-    if (!map) return
-    getRoute({ mode, src: loc, dst: coords}).then(route => {
-      const src = map.getSource('route') as GeoJSONSource
-      console.log(route)
-      src.setData(route)
-    })
-  }
-
-  useEffect(getAndSetIso, [map, loc, mode, api])
-
   const toggleLayer = (layer: string, callbackOnVisible?: () => void) => {
     if (map) {
       const visible = map.getLayoutProperty(layer, 'visibility')
@@ -226,9 +138,7 @@ const Mapbox = () => {
       <Box pos='absolute' p={4} float='left' zIndex={99}>
         <Sidebar
           onModeChange={setMode}
-          onAPIChange={setAPI}
           toggleRoad={() => toggleLayer('roadLayer', getRoadIso)}
-          toggleIso={() => toggleLayer('isoLayer')}
         />
       </Box>
       <Box w='100%' h='100%' ref={mapContainer} />
